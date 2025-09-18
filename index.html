@@ -1061,7 +1061,7 @@ importFile.addEventListener('change', async (e)=>{
 
 /* === 新增：背景功能（不影響匯出/匯入結構） === */
 const DEFAULT_BG_URL = "https://sir871364.github.io/line-chat-tool/01.jpg";
-let bgImageDataURL = DEFAULT_BG_URL;
+let bgImageDataURL = null;
 
 function applyChatBackground() {
   const chatArea = document.getElementById('chatArea');
@@ -1193,6 +1193,7 @@ applyChatBackground();
   } catch {}
 })();
 </script>
+
 
 
 
