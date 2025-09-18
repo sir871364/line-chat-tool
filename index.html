@@ -135,7 +135,7 @@ body.exporting #inlineEditor{ display:none !important; }
 body.exporting .phone{ box-shadow:none !important; border-radius:0 !important; padding:0 !important; }
 
 /* 狀態列（比例與粗細更像 iOS） */
-.status-bar{height:28px; display:flex; align-items:center; justify-content:space-between; padding:0 10px; color:#000; font-weight:600; letter-spacing:.2px; background:#fff}
+.status-bar{height:28px; display:flex; align-items:center; justify-content:space-between; padding:0 10px; color:#000; font-weight:600; letter-spacing:.2px; background:transparent}
 status-bar{height:28px; display:flex; align-items:center; justify-content:space-between; padding:0 10px; color:#000; font-weight:600; letter-spacing:.2px; background:transparent}
 .status-left{display:flex; align-items:center; gap:6px}
 .status-left .time {font-variant-numeric: tabular-nums;font-size: 14px;font-weight: 600;margin-left: 16px; margin-top: 2px;}
@@ -221,28 +221,25 @@ status-bar{height:28px; display:flex; align-items:center; justify-content:space-
 .msg-list{position:relative; display:flex; flex-direction:column; gap:8px; z-index:1}
 .status-bar,
 .chat-header {
+  background: transparent !important;
   position: relative;
-  background-color: transparent;
+  z-index: 2;
+}
+
+.phone {
+  background-image: url("https://sir871364.github.io/line-chat-tool/01.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  position: relative;
 }
-
-.status-bar::before,
-.chat-header::before {
+.phone::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0, var(--bg-dim, 0));
-  backdrop-filter: blur(var(--bg-blur, 0px));
-  pointer-events: none;
+  background: rgba(0,0,0,var(--bg-dim,0));
+  backdrop-filter: blur(var(--bg-blur,0px));
   z-index: 0;
-}
-
-.status-bar > *,
-.chat-header > * {
-  position: relative;
-  z-index: 1;
 }
 
 /* 日期分隔膠囊 */
@@ -1078,7 +1075,6 @@ const DEFAULT_BG_URL = "https://sir871364.github.io/line-chat-tool/01.jpg";
 let bgImageDataURL = DEFAULT_BG_URL;
 
 function applyChatBackground(forceUrl){
-  // 僅在有新圖片時才更新，否則保持預設
   if (forceUrl) {
     bgImageDataURL = forceUrl;
   } else if (!bgImageDataURL) {
@@ -1086,25 +1082,16 @@ function applyChatBackground(forceUrl){
   }
 
   const root = document.documentElement;
-  const chatArea = document.getElementById('chatArea');
-  const bars = document.querySelectorAll('.status-bar, .chat-header');
-  if (!chatArea) return;
+  const phone = document.querySelector('.phone');
+  if (!phone) return;
 
-  // 聊天區背景
-  chatArea.style.backgroundImage = `url("${bgImageDataURL}")`;
-  chatArea.style.backgroundRepeat = 'no-repeat';
-  chatArea.style.backgroundSize = 'cover';
-  chatArea.style.backgroundPosition = 'center center';
+  // 背景套在最外層 phone
+  phone.style.backgroundImage = `url("${bgImageDataURL}")`;
+  phone.style.backgroundRepeat = 'no-repeat';
+  phone.style.backgroundSize = 'cover';
+  phone.style.backgroundPosition = 'center center';
 
-  // 狀態列、標題列背景同步
-  bars.forEach(el => {
-    el.style.backgroundImage = `url("${bgImageDataURL}")`;
-    el.style.backgroundRepeat = 'no-repeat';
-    el.style.backgroundSize = 'cover';
-    el.style.backgroundPosition = 'center center';
-  });
-
-  // 暗化、模糊共用
+  // 暗化 / 模糊統一設在 :root
   const dimCtl  = document.getElementById('bgDim');
   const blurCtl = document.getElementById('bgBlur');
   const dim = Math.max(0, Math.min(80, parseInt(dimCtl?.value || 0, 10)));
