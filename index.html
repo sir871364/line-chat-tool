@@ -178,15 +178,17 @@ status-bar{height:28px; display:flex; align-items:center; justify-content:space-
   flex:none; 
 }
 /* 返回箭頭 + 未讀數字 膠囊 */
-.back-with-badge {
-  display: inline-flex;
-  align-items: center;
-  background: #f5f0e8;   /* 底色，可調 */
-  border-radius: 16px;   /* 膠囊圓角 */
-  padding: 2px 8px;
-  font-weight: 700;
-  font-size: 14px;
-  color: #5a3825;        /* 字色，可調 */
+.back-with-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: transparent; 
+  /* background: rgba(255,255,255,0.14);
+  backdrop-filter: blur(var(--bg-blur, 0px)); */
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #3b2a20;    
 }
 
 .back-arrow {
@@ -1070,42 +1072,82 @@ importFile.addEventListener('change', async (e)=>{
 const DEFAULT_BG_URL = "https://sir871364.github.io/line-chat-tool/01.jpg";
 let bgImageDataURL = DEFAULT_BG_URL;
 
+const DEFAULT_BG_URL = "https://sir871364.github.io/line-chat-tool/01.jpg";
+let bgImageDataURL = DEFAULT_BG_URL;
+
 function applyChatBackground(forceUrl){
-  // 如果有新圖片就換，否則保持現在的
-  if (forceUrl) {
-    bgImageDataURL = forceUrl;
-  }
+  if (forceUrl) bgImageDataURL = forceUrl;
+  if (!bgImageDataURL) bgImageDataURL = DEFAULT_BG_URL;
 
-  // 如果變數是空的，強制回到預設
-  if (!bgImageDataURL) {
-    bgImageDataURL = DEFAULT_BG_URL;
-  }
-
-  const root = document.documentElement;
+  const root  = document.documentElement;
   const phone = document.querySelector('.phone');
   if (!phone) return;
 
-  // 背景套在 phone
+  // 背景圖
   phone.style.backgroundImage = `url("${bgImageDataURL}")`;
-  phone.style.backgroundRepeat = 'no-repeat';
-  phone.style.backgroundSize = 'cover';
-  phone.style.backgroundPosition = 'center center';
 
-  // 暗化/模糊統一處理
+  // 顯示模式（cover / contain / repeat）
+  const mode = document.getElementById('bgSize')?.value || 'cover';
+  if (mode === 'repeat'){
+    phone.style.backgroundRepeat   = 'repeat';
+    phone.style.backgroundSize     = 'auto';
+    phone.style.backgroundPosition = 'top left';
+  } else {
+    phone.style.backgroundRepeat   = 'no-repeat';
+    phone.style.backgroundSize     = mode;           // cover or contain
+    phone.style.backgroundPosition = 'center center';
+  }
+
+  // 背景底色（當圖片透明或 repeat 留白時可見）
+  const color = document.getElementById('bgColor')?.value || '#87CEEB';
+  phone.style.backgroundColor = color;
+
+  // 暗化 / 模糊（:root 變數讓所有區塊共用）
   const dimCtl  = document.getElementById('bgDim');
   const blurCtl = document.getElementById('bgBlur');
   const dim = Math.max(0, Math.min(80, parseInt(dimCtl?.value || 0, 10)));
-
   root.style.setProperty('--bg-dim',  String(dim/100));
   root.style.setProperty('--bg-blur', blurCtl?.checked ? '6px' : '0px');
 }
 
-// 初始化
+// 初始化：一載入就吃預設 01.jpg
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', () => applyChatBackground(DEFAULT_BG_URL));
 } else {
   applyChatBackground(DEFAULT_BG_URL);
 }
+
+// ---- 背景控制面板事件 ----
+bgImage?.addEventListener('change', (e)=>{
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => applyChatBackground(r.result); // 套用上傳圖
+  r.readAsDataURL(f);
+});
+
+bgClear?.addEventListener('click', ()=>{
+  // 還原成預設圖，並清空檔案 input
+  if (bgImage) bgImage.value = '';
+  applyChatBackground(DEFAULT_BG_URL);
+});
+
+bgDim?.addEventListener('input', ()=>{
+  if (bgDimVal) bgDimVal.textContent = (bgDim.value|0) + '%';
+  applyChatBackground(); // 只更新暗化強度
+});
+
+bgBlur?.addEventListener('change', ()=>{
+  applyChatBackground(); // 只更新模糊開關
+});
+
+bgSize?.addEventListener('change', ()=>{
+  applyChatBackground(); // cover/contain/repeat 即時生效
+});
+
+bgColor?.addEventListener('input', ()=>{
+  applyChatBackground(); // 底色即時生效
+});
 
 </script>
 </body>
@@ -1208,7 +1250,6 @@ if (document.readyState === 'loading') {
   } catch {}
 })();
 </script>
-
 
 
 
