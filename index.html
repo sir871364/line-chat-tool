@@ -5,36 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>LINE 對話圖片製造機 — iOS 風格 + 可改頭貼/名稱 + 已讀設定 + 右側編輯 + 存檔 + 自訂背景</title>
 <style>
-// === 記住我 ===
-const rememberBox  = document.getElementById('rememberMe');
-const applyRemember = document.getElementById('applyRemember');
-const rememberTip  = document.getElementById('rememberTip');
-
-// 若已升級過，不要重複打
-if (localStorage.getItem('rememberApplied') === '1') {
-  rememberBox && (rememberBox.checked = true);
-  rememberTip && (rememberTip.textContent = '已啟用記住我（Cookie 有效期間內不會再跳密碼）');
-}
-
-applyRemember?.addEventListener('click', async () => {
-  if (!rememberBox?.checked) {
-    rememberTip.textContent = '未勾選。若要啟用，請先打勾。';
-    return;
-  }
-  try {
-    // 這次請求會讓 middleware 設置 Cookie
-    const r = await fetch('/?remember=1', { credentials: 'include', cache: 'no-store' });
-    if (r.ok) {
-      localStorage.setItem('rememberApplied', '1');
-      rememberTip.textContent = '已啟用記住我，之後 30 天內不會再要求密碼（除非清除站台資料）。';
-    } else {
-      rememberTip.textContent = '啟用失敗，請重新整理後再試一次。';
-    }
-  } catch (e) {
-    rememberTip.textContent = '網路異常，稍後再試。';
-  }
-});
-
 /* ===== iOS 風格主題（僅樣式） ===== */
 :root{
   --line-green:#00b900;
@@ -1092,50 +1062,23 @@ importFile.addEventListener('change', async (e)=>{
 /* === 新增：背景功能（不影響匯出/匯入結構） === */
 let bgImageDataURL = null;
 
+// 固定使用 GitHub Pages 上的 01.jpg
+const BG_URL = "https://sir871364.github.io/line-chat-tool/01.jpg";
+
 function applyChatBackground() {
-  if (bgColor) {
-    chatArea.style.backgroundColor = bgColor.value || '';
-  }
-  if (bgImageDataURL) {
-    chatArea.style.backgroundImage = `url(${bgImageDataURL})`;
-    if (bgSize && bgSize.value === 'repeat') {
-      chatArea.style.backgroundRepeat = 'repeat';
-      chatArea.style.backgroundSize = 'auto';
-    } else {
-      chatArea.style.backgroundRepeat = 'no-repeat';
-      chatArea.style.backgroundSize = (bgSize?.value || 'cover');
-    }
-    chatArea.style.backgroundPosition = 'center center';
-  } else {
-    chatArea.style.backgroundImage = 'none';
-  }
+  const chatArea = document.getElementById('chatArea');
+  chatArea.style.backgroundColor = '';
+  chatArea.style.backgroundImage = `url("${BG_URL}")`;
+  chatArea.style.backgroundRepeat = 'no-repeat';
+  chatArea.style.backgroundSize = 'cover';
+  chatArea.style.backgroundPosition = 'center center';
 
-  if (bgDim) {
-    const dim = Math.max(0, Math.min(80, parseInt(bgDim.value||0, 10)));
-    chatArea.style.setProperty('--bg-dim', (dim/100).toString());
-    if (bgDimVal) bgDimVal.textContent = `${dim}%`;
-  }
-
-  if (bgBlur) {
-    chatArea.style.setProperty('--bg-blur', bgBlur.checked ? '6px' : '0px');
-  }
+  // 若仍想保留暗化/模糊控制，可讀取這兩個控制項
+  const bgDim = document.getElementById('bgDim');
+  const bgBlur = document.getElementById('bgBlur');
+  if (bgDim) chatArea.style.setProperty('--bg-dim', (Math.max(0, Math.min(80, parseInt(bgDim.value||0,10)))/100).toString());
+  if (bgBlur) chatArea.style.setProperty('--bg-blur', bgBlur.checked ? '6px' : '0px');
 }
-
-bgColor && bgColor.addEventListener('input', applyChatBackground);
-bgSize && bgSize.addEventListener('change', applyChatBackground);
-bgDim && bgDim.addEventListener('input', applyChatBackground);
-bgBlur && bgBlur.addEventListener('change', applyChatBackground);
-bgImage && bgImage.addEventListener('change', async (e)=>{
-  const f = e.target.files && e.target.files[0];
-  if (!f) return;
-  bgImageDataURL = await fileToDataURL(f);
-  applyChatBackground();
-});
-bgClear && bgClear.addEventListener('click', ()=>{
-  bgImageDataURL = null;
-  if (bgImage) bgImage.value = '';
-  applyChatBackground();
-});
 
 // 初始化一次
 applyChatBackground();
@@ -1240,6 +1183,7 @@ applyChatBackground();
   } catch {}
 })();
 </script>
+
 
 
 
