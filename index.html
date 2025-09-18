@@ -966,35 +966,54 @@ msgTypeSelect.addEventListener('change',()=>{
 });
 
 /* 下載 PNG（隱藏板手 + 滿版無白邊 + 去外框） */
-downloadPNG.addEventListener('click', async ()=>{
-  const phoneEl=document.getElementById('phone');
-  const prev=phoneEl.scrollTop; phoneEl.scrollTop=0;
+async function exportAsPNGBlob() {
+  // 把你的出圖節點改成實際的 DOM 節點 id
+  const node = document.getElementById('phone');
+  const canvas = await html2canvas(node, {backgroundColor: null, scale: 2});
+  return new Promise(res => canvas.toBlob(res, 'image/png'));
+}
 
-  document.body.classList.add('exporting');
-  await new Promise(r=>requestAnimationFrame(r));
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
 
-  try{
-    let canvas = await html2canvas(phoneEl,{
-      useCORS:true, allowTaint:true, scale:2,
-      backgroundColor:null, scrollX:0, scrollY:0
-    });
+downloadPNG.addEventListener('click', async () => {
+  const blob = await exportAsPNGBlob();
+  const fileName = 'line-chat.png';
 
-    /* 去 1px 邊緣：避免白邊 */
-    const trimmed = document.createElement('canvas');
-    trimmed.width  = Math.max(1, canvas.width  - 2);
-    trimmed.height = Math.max(1, canvas.height - 2);
-    const ctx = trimmed.getContext('2d');
-    ctx.drawImage(canvas, 1, 1, trimmed.width, trimmed.height, 0, 0, trimmed.width, trimmed.height);
+  // 先試 Web Share (iOS 15+ 大多可用)
+  if (navigator.canShare && window.File && window.Blob) {
+    try {
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'LINE Chat' });
+        return; // 分享面板中可選「儲存影像」，會進相簿
+      }
+    } catch(e) {
+      // ignore fallback below
+    }
+  }
 
-    trimmed.toBlob(b=>{
-      const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='line-chat.png';
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-    },'image/png');
-  } finally {
-    document.body.classList.remove('exporting');
-    phoneEl.scrollTop=prev;
+  const url = URL.createObjectURL(blob);
+
+  if (isIOS()) {
+    // iOS：開新分頁顯示圖片，讓使用者長按→加入相片
+    window.open(url, '_blank'); 
+    // 也可彈出提示
+    alert('iPhone：在新分頁長按圖片，選「加入相片」即可存到相簿。');
+  } else {
+    // 桌機/Android：用 a[download]
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 });
+
 
 /* 匯出 / 匯入 存檔（原樣） */
 exportBtn.addEventListener('click', ()=>{
@@ -1063,23 +1082,13 @@ importFile.addEventListener('change', async (e)=>{
 let bgImageDataURL = null;
 
 function applyChatBackground() {
-  if (bgColor) {
-    chatArea.style.backgroundColor = bgColor.value || '';
-  }
-  if (bgImageDataURL) {
-    chatArea.style.backgroundImage = `url(${bgImageDataURL})`;
-    if (bgSize && bgSize.value === 'repeat') {
-      chatArea.style.backgroundRepeat = 'repeat';
-      chatArea.style.backgroundSize = 'auto';
-    } else {
-      chatArea.style.backgroundRepeat = 'no-repeat';
-      chatArea.style.backgroundSize = (bgSize?.value || 'cover');
-    }
-    chatArea.style.backgroundPosition = 'center center';
-  } else {
-    chatArea.style.backgroundImage = 'none';
-  }
-
+  // 強制固定背景為 01.jpg，不再讀取控制面板設定
+  chatArea.style.backgroundColor = '';
+  chatArea.style.backgroundImage = 'url("01.jpg")';
+  chatArea.style.backgroundRepeat = 'no-repeat';
+  chatArea.style.backgroundSize = 'cover';
+  chatArea.style.backgroundPosition = 'center center';
+}
   if (bgDim) {
     const dim = Math.max(0, Math.min(80, parseInt(bgDim.value||0, 10)));
     chatArea.style.setProperty('--bg-dim', (dim/100).toString());
