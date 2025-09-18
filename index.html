@@ -1075,9 +1075,13 @@ const DEFAULT_BG_URL = "https://sir871364.github.io/line-chat-tool/01.jpg";
 let bgImageDataURL = DEFAULT_BG_URL;
 
 function applyChatBackground(forceUrl){
+  // 僅在指定新圖時才更新
   if (forceUrl) {
     bgImageDataURL = forceUrl;
-  } else if (!bgImageDataURL) {
+  }
+
+  // 如果變數是空的，強制回到預設
+  if (!bgImageDataURL) {
     bgImageDataURL = DEFAULT_BG_URL;
   }
 
@@ -1085,13 +1089,13 @@ function applyChatBackground(forceUrl){
   const phone = document.querySelector('.phone');
   if (!phone) return;
 
-  // 背景套在最外層 phone
+  // 背景套在 phone
   phone.style.backgroundImage = `url("${bgImageDataURL}")`;
   phone.style.backgroundRepeat = 'no-repeat';
   phone.style.backgroundSize = 'cover';
   phone.style.backgroundPosition = 'center center';
 
-  // 暗化 / 模糊統一設在 :root
+  // 暗化/模糊共用
   const dimCtl  = document.getElementById('bgDim');
   const blurCtl = document.getElementById('bgBlur');
   const dim = Math.max(0, Math.min(80, parseInt(dimCtl?.value || 0, 10)));
@@ -1099,6 +1103,7 @@ function applyChatBackground(forceUrl){
   root.style.setProperty('--bg-dim',  String(dim/100));
   root.style.setProperty('--bg-blur', blurCtl?.checked ? '6px' : '0px');
 }
+
 </script>
 </body>
 </html>
@@ -1200,6 +1205,7 @@ function applyChatBackground(forceUrl){
   } catch {}
 })();
 </script>
+
 
 
 
