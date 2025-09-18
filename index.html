@@ -1112,5 +1112,50 @@ applyChatBackground();
 </script>
 </body>
 </html>
+<script>
+(async () => {
+  try {
+    const res = await fetch('/whoami', { cache: 'no-store' });
+    if (!res.ok) return;
+    const d = await res.json();
+
+    // 用 UA 當「裝置資訊」的替代品
+    const deviceInfo = navigator.userAgent;
+
+    // 只顯示一次：用 sessionStorage 控制
+    if (!sessionStorage.getItem('loginBannerShown')) {
+      sessionStorage.setItem('loginBannerShown', '1');
+
+      // 簡單的置頂提示條
+      const bar = document.createElement('div');
+      bar.style.cssText = `
+        position:fixed;left:0;right:0;top:0;z-index:9999;
+        background:#111;color:#fff;padding:10px 14px;
+        font-family:-apple-system,BlinkMacSystemFont,'Noto Sans TC',sans-serif;
+        box-shadow:0 2px 8px rgba(0,0,0,.25);
+      `;
+      bar.textContent =
+        `登入成功｜IP: ${d.ip}` +
+        (d.city || d.country ? `（${d.city}${d.city && d.country ? '·' : ''}${d.country}）` : '') +
+        `｜裝置：${deviceInfo}`;
+
+      const close = document.createElement('button');
+      close.textContent = '關閉';
+      close.style.cssText = 'margin-left:12px;padding:2px 8px;border:0;border-radius:6px;';
+      close.onclick = () => bar.remove();
+      bar.appendChild(close);
+
+      document.body.appendChild(bar);
+      // 推下內文，避免擋住
+      document.body.style.marginTop = '48px';
+      setTimeout(() => { try { bar.remove(); document.body.style.marginTop = ''; } catch(e){} }, 8000);
+    }
+  } catch (e) {
+    // 靜默略過
+  }
+})();
+</script>
+
+
 
 
