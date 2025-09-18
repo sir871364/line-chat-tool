@@ -1060,38 +1060,47 @@ importFile.addEventListener('change', async (e)=>{
 })();
 
 /* === 新增：背景功能（不影響匯出/匯入結構） === */
-const DEFAULT_BG_URL = "https://sir871364.github.io/line-chat-tool/01.jpg";
-let bgImageDataURL = null;
+const DEFAULT_BG_URL = "https://sir871364.github.io/line-chat-tool/01.jpg?v=1";
+let bgImageDataURL = DEFAULT_BG_URL;
 
-function applyChatBackground() {
+function applyChatBackground(forceUrl){
+  if (forceUrl) bgImageDataURL = forceUrl;
+
   const chatArea = document.getElementById('chatArea');
-  chatArea.style.backgroundImage = `url("${bgImageDataURL}")`;
-  chatArea.style.backgroundRepeat = 'no-repeat';
-  chatArea.style.backgroundSize = 'cover';
-  chatArea.style.backgroundPosition = 'center center';
+  if (!chatArea) return;
 
-  const bgDim = document.getElementById('bgDim');
-  const bgBlur = document.getElementById('bgBlur');
-  if (bgDim) chatArea.style.setProperty('--bg-dim', (Math.max(0, Math.min(80, parseInt(bgDim.value||0,10)))/100).toString());
-  if (bgBlur) chatArea.style.setProperty('--bg-blur', bgBlur.checked ? '6px' : '0px');
+  chatArea.style.backgroundImage   = `url("${bgImageDataURL}")`;
+  chatArea.style.backgroundRepeat  = 'no-repeat';
+  chatArea.style.backgroundSize    = 'cover';
+  chatArea.style.backgroundPosition= 'center center';
+
+  const dimCtl  = document.getElementById('bgDim');
+  const blurCtl = document.getElementById('bgBlur');
+  const dim = Math.max(0, Math.min(80, parseInt(dimCtl?.value || 0, 10)));
+  chatArea.style.setProperty('--bg-dim', (dim/100).toString());
+  chatArea.style.setProperty('--bg-blur', blurCtl?.checked ? '6px' : '0px');
 }
 
-bgImage && bgImage.addEventListener('change', async (e)=>{
-  const f = e.target.files && e.target.files[0];
+// 手動上傳
+bgImage?.addEventListener('change', async (e)=>{
+  const f = e.target.files?.[0];
   if (!f) return;
-  bgImageDataURL = await fileToDataURL(f);
-  applyChatBackground();
+  const data = await fileToDataURL(f);
+  applyChatBackground(data);
 });
 
-bgClear && bgClear.addEventListener('click', ()=>{
-  bgImageDataURL = DEFAULT_BG_URL; // 清除時回到預設
+// 清除 → 回到預設
+bgClear?.addEventListener('click', ()=>{
+  applyChatBackground(DEFAULT_BG_URL);
   if (bgImage) bgImage.value = '';
-  applyChatBackground();
 });
 
-// 初始化一次
-applyChatBackground();
-
+// ✅ 這段換成「ready 就跑，否則等事件」
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', applyChatBackground);
+} else {
+  applyChatBackground();
+}
 </script>
 </body>
 </html>
@@ -1193,16 +1202,4 @@ applyChatBackground();
   } catch {}
 })();
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
 
