@@ -1,0 +1,1114 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LINE 對話圖片製造機 — iOS 風格 + 可改頭貼/名稱 + 已讀設定 + 右側編輯 + 存檔 + 自訂背景</title>
+<style>
+/* ===== iOS 風格主題（僅樣式） ===== */
+:root{
+  --line-green:#00b900;
+  --text:#111;
+  --muted:#6b7280;
+
+  /* 泡泡與背景更貼近 iOS LINE */
+  --me:#cfecc9;         /* 我方泡泡（淡綠） */
+  --other:#ffffff;      /* 對方泡泡（白） */
+  --bubble-shadow:0 1px 0 rgba(0,0,0,0.06);
+}
+
+*{box-sizing:border-box}
+
+/* iOS 字體堆疊 */
+body{
+  font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text","SF Pro Display",
+               "Helvetica Neue","PingFang TC","Noto Sans TC", Arial, sans-serif;
+  margin:18px; color:var(--text); background:#f7f7f8
+}
+
+.app{display:flex; gap:18px; max-width:1280px; margin:0 auto; align-items:flex-start}
+.panel{width:520px; background:#fff; border-radius:12px; padding:14px; box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+.panel h2{margin:6px 0 12px; font-size:16px}
+label{display:block; font-size:13px; margin:8px 0 6px; color:#333}
+input[type="text"], input[type="time"], input[type="date"], input[type="number"], select, textarea{
+  width:100%; padding:9px 11px; border:1px solid #e5e7eb; border-radius:10px; font-size:14px
+}
+textarea{min-height:64px; resize:vertical}
+.row{display:flex; gap:8px; align-items:center}
+.row input[type="date"],
+.row input[type="time"],
+.row select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 6px 10px;
+  font-size: 14px;
+  background-color: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  height: 36px;
+}
+
+.row input[type="date"]:focus,
+.row input[type="time"]:focus,
+.row select:focus {
+  outline: none;
+  border-color: #3b82f6;          /* 藍色邊框 */
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+}
+.btn{background:var(--line-green); color:white; padding:8px 12px; border-radius:12px; border:none; cursor:pointer; font-weight:700}
+.btn.secondary{background:#f3f3f3; color:#333}
+.btn.danger{background:#fee2e2; color:#b91c1c; }
+.btn.danger:hover{
+  background:#fecaca;
+}
+
+.small{font-size:13px; padding:6px 8px}
+.muted{color:var(--muted); font-size:12px}
+
+/* 控制面板：新增訊息列做成自適應 Grid 佈局 */
+#composeRow{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;  /* 4 欄均分 */
+  gap:10px 12px;
+  align-items:center;
+}
+
+/* 統一外觀與高度 */
+#composeRow select,
+#composeRow input[type="date"],
+#composeRow input[type="time"]{
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  width:100% !important;               /* 覆蓋原本內聯寬度 */
+  height:38px;
+  padding:6px 10px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#fff;
+  font-size:14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+  transition:border-color .2s, box-shadow .2s;
+}
+#composeRow select:focus,
+#composeRow input[type="date"]:focus,
+#composeRow input[type="time"]:focus{
+  outline:none;
+  border-color:#3b82f6;
+  box-shadow:0 0 0 2px rgba(59,130,246,.18);
+}
+
+/* 窄寬度時自動斷行（兩欄/一欄） */
+@media (max-width: 1200px){
+  #composeRow{ grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px){
+  #composeRow{ grid-template-columns: 1fr; }
+}
+
+
+/* 參與者 */
+.participants{display:flex; gap:12px; flex-wrap:wrap; margin-top:6px}
+.participant{display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; position:relative}
+.p-avatar{width:36px; height:36px; border-radius:50%; overflow:hidden; background:#ddd; cursor:pointer; border:2px solid #f1f5f9}
+.p-avatar img{width:100%; height:100%; object-fit:cover}
+.participant input[type=file]{display:none}
+.p-del{position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; background:#ef4444; color:#fff; font-size:12px; line-height:18px; text-align:center; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.p-name{outline:none; border-bottom:1px dashed transparent; padding:2px 4px; border-radius:4px}
+.p-name:focus{border-bottom-color:#cbd5e1; background:#f8fafc}
+
+/* 手機模擬 */
+.phone-wrap{width:390px; display:flex; justify-content:center}
+.phone{
+  width:390px; height:812px;
+  background:#e6ebf2;
+  border-radius:32px;
+  padding:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.18);
+  position:relative; overflow:hidden;
+  display:flex; flex-direction:column
+}
+
+/* 出圖時暫時樣式：隱藏板手/編輯器、去陰影與外框避免像模擬器 */
+body.exporting .drag-handle,
+body.exporting #inlineEditor{ display:none !important; }
+body.exporting .phone{ box-shadow:none !important; border-radius:0 !important; padding:0 !important; }
+
+/* 狀態列（比例與粗細更像 iOS） */
+.status-bar{height:28px; display:flex; align-items:center; justify-content:space-between; padding:0 10px; color:#000; font-weight:600; letter-spacing:.2px; background:#fff}
+.status-left{display:flex; align-items:center; gap:6px}
+.status-left .time {font-variant-numeric: tabular-nums;font-size: 14px;font-weight: 600;margin-left: 16px; margin-top: 2px;}
+.status-right{display:flex; align-items:center; gap:8px}
+.signal{display:flex; align-items:flex-end; gap:2px}
+.signal .bar{width:4px; background:#000; opacity:0.9;border-top-left-radius:9999px;border-top-right-radius:9999px;border-bottom-left-radius:0;border-bottom-right-radius:0;}
+.signal .bar:nth-child(1){height:6px}
+.signal .bar:nth-child(2){height:9px}
+.signal .bar:nth-child(3){height:12px}
+.signal .bar:nth-child(4){height:15px}
+.signal .bar:nth-child(5){height:18px}
+.net-type{font-size:12px; margin-left:2px}
+.battery-wrap{display:flex; gap:4px; align-items:center}
+.battery{width:26px; height:12px; border-radius:3px; border:2px solid rgba(0,0,0,0.9); position:relative}
+.battery::after{content:''; position:absolute; right:-5px; top:2px; width:3px; height:6px; border-radius:1px; background:rgba(0,0,0,0.9)}
+.battery-fill{height:100%; width:80%; background:#34c759; border-radius:1px}
+.battery-pct{font-size:12px}
+
+/* 標題列 */
+.chat-header{
+  height:46px;
+  display:grid;
+  grid-template-columns: auto 1fr auto; /* ← 由 4 欄改成 3 欄 */
+  align-items:center;
+  column-gap:8px;
+  padding:0 10px;
+  color:#000;
+  background:#fff;
+  border-bottom:1px solid #f0f0f0;
+}
+000;background:#fff;border-bottom:1px solid #f0f0f0;}
+.back{font-size:22px; font-weight:800; line-height:1}
+.header-title{flex:1; font-weight:400; font-size:16px; padding:4px 6px; border-radius:6px}
+.header-title[contenteditable="true"]{outline:2px solid rgba(0,0,0,0.15)}
+.header-actions{display:flex; align-items:center; gap:8px}
+.icon-btn{width:28px; height:28px; border-radius:999px; display:grid; place-items:center; background:rgba(0,0,0,.06); border:none; cursor:default}
+.icon-btn svg{width:18px; height:18px}
+.header-title-wrap{ display:flex; align-items:center; gap:6px; }
+.unread-badge{
+  display:inline-block;
+  padding:2px 6px;
+  min-width:20px;
+  border-radius:999px;
+  background:#ff3b30;
+  color:#fff;
+  font-size:12px; font-weight:700; line-height:1.1;
+  text-align:center;
+  margin-left:2px; 
+  margin-right:6px; 
+  flex:none; 
+}
+/* 返回箭頭 + 未讀數字 膠囊 */
+.back-with-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #f5f0e8;   /* 底色，可調 */
+  border-radius: 16px;   /* 膠囊圓角 */
+  padding: 2px 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #5a3825;        /* 字色，可調 */
+}
+
+.back-arrow {
+  margin-right: 4px;     /* 箭頭與數字間距 */
+}
+
+.back-badge {
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* 聊天區域：預設純白，最像官方 */
+.chat-area {
+  flex:1;
+  overflow:auto;
+  padding:12px 10px;
+  position:relative;
+  background:#87CEEB;   /* 藍色背景（預設保留） */
+  /* === 新增：讓背景可客製 === */
+  background-position:center center;
+  background-size:cover;
+  background-repeat:no-repeat;
+}
+/* === 新增：背景暗化與模糊遮罩 === */
+.chat-area::before{
+  content:'';
+  position:absolute; inset:0;
+  background: rgba(0,0,0, var(--bg-dim, 0)); /* 0~0.8 */
+  backdrop-filter: blur(var(--bg-blur, 0px));
+  pointer-events:none;
+  z-index:0;
+}
+.msg-list{position:relative; display:flex; flex-direction:column; gap:8px; z-index:1}
+
+/* 日期分隔膠囊 */
+.date-sep{
+  align-self:center; background:#f2f2f6; color:#555; font-size:12px;
+  padding:4px 10px; border-radius:20px; box-shadow:var(--bubble-shadow);
+}
+
+/* 訊息列 */
+.msg-row{display:flex; align-items:flex-end; gap:6px}
+.msg-row[draggable="true"]{cursor:grab}
+.msg-row.dragging{opacity:.5}
+.msg-left{justify-content:flex-start}
+.msg-right{justify-content:flex-end}
+
+/* meta 與泡泡（更靠泡泡角、更小字） */
+.meta{
+  font-size:11px; color:#6b7280; white-space:nowrap;
+  display:flex; flex-direction:column; line-height:1.05;
+  margin:0 4px
+}
+.meta .read{margin:0 0 2px 0}
+.meta .t{opacity:0.95}
+
+/* 泡泡：圓角與尾巴（上角） */
+.bubble {
+  max-width: 82%;
+  padding: 10px 12px;
+  border-radius: 18px;
+  box-shadow: var(--bubble-shadow);
+  font-size: 15px;
+  line-height: 1.38;
+  position: relative;
+  color: #000; /* 預設文字顏色黑色 */
+}
+
+/* 我方訊息（綠色泡泡） */
+.bubble.me {
+  background: #cfecc9;      /* 固定淡綠色 */
+  color: #000;              /* 黑色文字 */
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 6px;
+}
+
+.bubble.other {
+  background: #ffffff;      /* 固定白色 */
+  color: #000;              /* 黑色文字 */
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 6px;
+}
+
+/* 尾巴：僅加在 .tail（渲染時判斷群組第一則） */
+.bubble.tail.me::after,
+.bubble.tail.other::after {
+  content: none;
+  display: none;
+}
+.bubble.me{ background:var(--me); color:#000; }
+.bubble.other{ background:var(--other); color:#000; }
+.bubble.tail.me::after{ right:-6px; background:var(--me); }
+.bubble.tail.other::after{ left:-6px; background:var(--other); }
+
+/* 大頭貼 */
+.avatar-small{width:32px; height:32px; border-radius:50%; overflow:hidden; background:#ccc; flex:0 0 auto}
+.avatar-small img{width:100%; height:100%; object-fit:cover}
+
+/* 圖片訊息：比例與圓角 */
+.img-only{max-width:240px; border-radius:14px; overflow:hidden; box-shadow:var(--bubble-shadow)}
+.img-only img{display:block; width:100%; height:auto}
+
+/* 通話訊息：更扁平、淡色 */
+.call-box{display:flex; align-items:center; gap:8px; padding:2px 0; background:transparent; border-radius:0}
+.call-ic{width:24px; height:24px; border-radius:999px; background:#eef1f5; display:grid; place-items:center; flex:0 0 24px}
+.call-ic svg{width:14px; height:14px; stroke:#333; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+.call-text{line-height:1.1}
+.call-title{font-weight:700; font-size:14px}
+.call-dur{font-size:12px; color:var(--muted); margin-top:2px}
+
+/* 右側編輯器 */
+.inline-editor{position:absolute; right:10px; top:76px; width:250px; background:#fff; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:10px; z-index:5; border:1px solid #eef2f7}
+.inline-editor h3{margin:0 0 8px; font-size:13px}
+.inline-editor .row{margin:6px 0}
+.inline-editor input, .inline-editor select, .inline-editor textarea{width:100%}
+.inline-editor .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:8px}
+.hide{display:none}
+
+/* 每則訊息拖曳把手 */
+.drag-handle{user-select:none; font-size:14px; opacity:.3; margin:0 4px}
+.drag-handle:hover{opacity:.8}
+
+/* 底部輸入列（白底、低矮、貼近 iOS） */
+.input-bar{
+  height:60px; display:flex; align-items:center; gap:10px;
+  padding:8px 10px; background:#fff; border-top:1px solid #f0f0f0
+}
+.icon{width:22px; height:22px; display:inline-block}
+.input{
+  flex:1; height:38px; background:#fff; border-radius:18px; display:flex;
+  align-items:center; padding:0 12px; box-shadow:0 1px 0 rgba(0,0,0,0.06); border:1px solid #eef2f7
+}
+.input .placeholder{color:#9ca3af}
+.home-ind{height:4px; width:120px; background:#000; border-radius:999px; opacity:0.15; align-self:center; margin:6px 0 2px}
+
+/* RWD */
+@media (max-width:900px){ .app{flex-direction:column; align-items:center} .panel{width:92vw} }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 左側控制面板（原樣功能保留） -->
+  <div class="panel">
+    <h2>LINE 對話製造機（iOS 風格）</h2>
+
+    <label>手機狀態列</label>
+    <div class="row">
+      <span class="muted">時間</span>
+      <input type="time" id="phoneTime" value="13:24" style="width:140px" />
+      <span class="muted">電量</span>
+      <input id="batteryRange" type="range" min="0" max="100" value="80" style="flex:1" />
+      <span id="batteryVal" class="muted">80%</span>
+    </div>
+
+    <label>對話標題</label>
+    <input type="text" id="chatTitleInput" value="黑人" placeholder="輸入對話對象名稱" />
+    <label style="margin-top:6px">其他聊天室未讀數</label>
+    <div class="row">
+    <input type="number" id="unreadInput" value="3" min="0" max="999" style="width:90px" />
+    <label class="muted" style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="unreadCap" checked>
+      99+ 封頂
+    </label>
+    <label class="muted" style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="unreadHideZero" checked>
+      0 時隱藏
+      </label>
+    </div>
+    <hr style="margin:10px 0; border:none; border-top:1px solid #eee" />
+
+    <label>對話者（點頭貼更換；點名字可改名；點右上角 ❌ 可刪除）</label>
+    <div class="participants" id="participants"></div>
+    <div class="row" style="margin-top:6px">
+      <input type="text" id="newName" placeholder="姓名（例如：小美）" />
+      <input type="file" id="newAvatar" accept="image/*" />
+      <button class="btn" id="addPerson">新增</button>
+    </div>
+
+    <label style="margin-top:10px">加入訊息</label>
+    <div class="row" id="composeRow">
+      <select id="fromSelect"><option value="me">我（右側）</option></select>
+      <select id="msgType">
+        <option value="text">文字</option>
+        <option value="image">圖片</option>
+        <option value="call">通話</option>
+      </select>
+      <input type="date" id="msgDate" />
+      <input type="time" id="msgTime" value="13:24" style="width:120px" />
+    </div>
+    <div class="row">
+      <textarea id="msgText" placeholder="輸入文字（或上傳圖片、設定通話）" style="flex:1"></textarea>
+      <div style="display:flex; flex-direction:column; gap:6px; min-width:160px">
+        <label class="muted">已讀設定</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="readToggle" checked> 顯示已讀</label>
+        <div class="row"><span class="muted">已讀數</span> <input type="number" id="readCountDefault" value="0" min="0" max="99" style="width:68px" title="0=顯示「已讀」；1=已讀1；2=已讀2..." ></div>
+      </div>
+    </div>
+    <div id="imageRow" style="margin-top:6px; display:none">
+      <input type="file" id="msgImage" accept="image/*" />
+    </div>
+    <div id="callRow" style="display:none; margin-top:6px">
+      <div class="row">
+        <select id="callMinutes" style="width:120px"></select>
+        <select id="callSeconds" style="width:120px"></select>
+      </div>
+    </div>
+
+    <!-- === 新增：聊天室背景區塊（不影響原有功能） === -->
+    <label style="margin-top:10px">聊天室背景</label>
+    <div class="row">
+      <input type="color" id="bgColor" value="#87CEEB" title="背景顏色" style="width:120px" />
+      <input type="file" id="bgImage" accept="image/*" title="上傳背景圖片" />
+    </div>
+    <div class="row">
+      <select id="bgSize" title="顯示模式" style="width:160px">
+        <option value="cover">填滿（裁切）</option>
+        <option value="contain">等比縮放（留邊）</option>
+        <option value="repeat">平鋪</option>
+      </select>
+      <span class="muted">暗化</span>
+      <input type="range" id="bgDim" min="0" max="80" value="0" style="flex:1" />
+      <span id="bgDimVal" class="muted">0%</span>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <label class="muted" style="display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="bgBlur"> 背景模糊
+      </label>
+      <button class="btn secondary" id="bgClear">清除背景</button>
+    </div>
+    <!-- === 新增結束 === -->
+
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="addMsg">加入</button>
+      <button class="btn secondary" id="downloadPNG">下載 PNG</button>
+      <button class="btn secondary" id="exportJSON">匯出存檔</button>
+      <button class="btn secondary" id="importJSONBtn">匯入存檔</button>
+      <input type="file" id="importJSON" accept="application/json" style="display:none">
+      <button class="btn secondary danger" id="clearChat">清除聊天紀錄</button>
+    </div>
+  </div>
+
+  <!-- 右側手機畫面 -->
+  <div class="phone-wrap">
+    <div class="phone" id="phone">
+      <!-- 狀態列 -->
+      <div class="status-bar">
+        <div class="status-left">
+          <div class="time" id="phoneTimeDisplay">13:24</div>
+        </div>
+        <div class="status-right">
+          <div class="signal" title="訊號">
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          </div>
+          <div class="net-type">5G</div>
+          <div class="battery-wrap">
+            <div class="battery"><div class="battery-fill" id="batteryFill" style="width:80%"></div></div>
+            <div class="battery-pct" id="batteryPct">80%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 聊天標題列 -->
+      <div class="chat-header">
+        <div class="back-with-badge">
+          <span class="back-arrow">‹</span>
+          <span id="unreadBadge" class="back-badge">99+</span>
+        </div>
+        <div class="header-title-wrap">
+          <div id="headerTitle" class="header-title" contenteditable="true" spellcheck="false">yofin (יופין)</div>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" title="搜尋" aria-label="搜尋">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" fill="none" stroke="#000" stroke-width="2"/>
+              <path d="M16 16l5 5" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="icon-btn" title="通話" aria-label="通話">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 4l4 3-2 3a12 12 0 0 0 6 6l3-2 3 4-2 3c-8 0-14-6-14-14Z" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="icon-btn" title="更多" aria-label="更多">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 右側內嵌編輯器（保留原功能） -->
+      <div id="inlineEditor" class="inline-editor hide" aria-live="polite">
+        <h3>編輯訊息</h3>
+        <div class="row"><label class="muted">類型</label><select id="ieType" disabled>
+          <option value="text">文字</option><option value="image">圖片</option><option value="call">通話</option>
+        </select></div>
+        <div class="row" id="ieTextRow"><label class="muted">文字內容</label><textarea id="ieText"></textarea></div>
+        <div class="row"><label class="muted">時間</label><input type="time" id="ieTime"></div>
+        <div class="row"><label class="muted">已讀</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label><input type="checkbox" id="ieReadShown"> 顯示</label>
+            <input type="number" id="ieReadCount" min="0" max="99" value="0" style="width:80px" title="0=『已讀』；>0=已讀N">
+          </div>
+        </div>
+        <div class="row" id="ieCallRow"><label class="muted">通話秒數</label><input type="number" id="ieSeconds" min="0" step="1" value="0"></div>
+        <div class="row" id="ieImageRow" style="display:none">
+          <label class="muted">更換圖片</label>
+          <input type="file" id="ieImage" accept="image/*" />
+        </div>
+        <div class="actions">
+          <button class="btn secondary" id="ieClose">關閉</button>
+          <button class="btn secondary" id="ieDelete" style="background:#fee2e2;color:#b91c1c">刪除訊息</button>
+          <button class="btn" id="ieApply">套用</button>
+        </div>
+      </div>
+
+      <!-- 聊天內容 -->
+      <div class="chat-area" id="chatArea">
+        <div class="msg-list" id="renderedMessages"></div>
+      </div>
+
+      <!-- 底部輸入列 -->
+      <div class="input-bar">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a3 3 0 0 1 3-3h2l2-2h4l2 2h2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8Z" fill="none" stroke="#111" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="#111" stroke-width="2"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="#111" stroke-width="2"/><path d="M4 16l4-4 3 3 5-5 4 4" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="input"><span class="placeholder">Aa</span></div>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#111" stroke-width="2"/><path d="M9 10h.01M15 10h.01M8 14c1.2 1 2.8 1.5 4 1.5s2.8-.5 4-1.5" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="4" width="6" height="10" rx="3" fill="none" stroke="#111" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="#111" stroke-linecap="round"/></svg>
+      </div>
+      <div class="home-ind"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 功能完全保留：html2canvas 出圖 + 儲存/載入 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+/* ===== 資料模型（原樣） ===== */
+const participants = []; // {id,name,avatar}
+const messages = []; // {id, fromId, type, text, imageData, seconds, time, date, readShown, readCount}
+
+/* ===== 取 DOM ===== */
+const participantsDiv = document.getElementById('participants');
+const clearBtn = document.getElementById('clearChat');
+const fromSelect = document.getElementById('fromSelect');
+const addPersonBtn = document.getElementById('addPerson');
+const newNameInput = document.getElementById('newName');
+const newAvatarInput = document.getElementById('newAvatar');
+const msgText = document.getElementById('msgText');
+const msgImage = document.getElementById('msgImage');
+const msgDate = document.getElementById('msgDate');
+const msgTime = document.getElementById('msgTime');
+const addMsgBtn = document.getElementById('addMsg');
+const renderedMessages = document.getElementById('renderedMessages');
+const phoneTimeInput = document.getElementById('phoneTime');
+const phoneTimeDisplay = document.getElementById('phoneTimeDisplay');
+const batteryRange = document.getElementById('batteryRange');
+const batteryFill = document.getElementById('batteryFill');
+const batteryPct = document.getElementById('batteryPct');
+const downloadPNG = document.getElementById('downloadPNG');
+const msgTypeSelect = document.getElementById('msgType');
+const imageRow = document.getElementById('imageRow');
+const callRow = document.getElementById('callRow');
+const callMinutes = document.getElementById('callMinutes');
+const callSeconds = document.getElementById('callSeconds');
+const headerTitle = document.getElementById('headerTitle');
+const chatTitleInput = document.getElementById('chatTitleInput');
+const readToggle = document.getElementById('readToggle');
+const readCountDefault = document.getElementById('readCountDefault');
+const unreadBadge   = document.getElementById('unreadBadge');
+const unreadInput   = document.getElementById('unreadInput');
+const unreadCap     = document.getElementById('unreadCap');
+const unreadHideZero= document.getElementById('unreadHideZero');
+
+/* === 新增：背景相關 DOM === */
+const chatArea   = document.getElementById('chatArea');
+const bgColor    = document.getElementById('bgColor');
+const bgImage    = document.getElementById('bgImage');
+const bgSize     = document.getElementById('bgSize');
+const bgDim      = document.getElementById('bgDim');
+const bgDimVal   = document.getElementById('bgDimVal');
+const bgBlur     = document.getElementById('bgBlur');
+const bgClear    = document.getElementById('bgClear');
+
+function applyUnreadBadge() {
+  const raw = parseInt(unreadInput.value, 10);
+  const n = isNaN(raw) ? 0 : Math.max(0, Math.min(999, raw));
+  const cap = !!(unreadCap && unreadCap.checked);
+  const hideZero = !!(unreadHideZero && unreadHideZero.checked);
+
+  if (!unreadBadge) return;
+
+  if (hideZero && n === 0) {
+    unreadBadge.style.display = 'none';
+    return;
+  }
+  unreadBadge.style.display = 'inline-block';
+  unreadBadge.textContent = cap && n > 99 ? '99+' : String(n);
+}
+
+// 即時更新
+if (unreadInput) {
+  unreadInput.addEventListener('input', applyUnreadBadge);
+}
+if (unreadCap) {
+  unreadCap.addEventListener('change', applyUnreadBadge);
+}
+if (unreadHideZero) {
+  unreadHideZero.addEventListener('change', applyUnreadBadge);
+}
+clearBtn && clearBtn.addEventListener('click', ()=>{
+  if(!confirm('確定要清除聊天紀錄？此操作無法復原。')) return;
+
+  // 清空訊息陣列
+  messages.splice(0, messages.length);
+
+  // 關閉右側內嵌編輯器，並重置選取中的訊息
+  currentEditId = null;
+  iePanel.classList.add('hide');
+
+  // 重新渲染
+  renderAll();
+});
+/* 內嵌編輯器（原樣） */
+const iePanel = document.getElementById('inlineEditor');
+const ieType = document.getElementById('ieType');
+const ieText = document.getElementById('ieText');
+const ieTime = document.getElementById('ieTime');
+const ieReadShown = document.getElementById('ieReadShown');
+const ieReadCount = document.getElementById('ieReadCount');
+const ieSeconds = document.getElementById('ieSeconds');
+const ieTextRow = document.getElementById('ieTextRow');
+const ieCallRow = document.getElementById('ieCallRow');
+const ieImageRow = document.getElementById('ieImageRow');
+const ieImage = document.getElementById('ieImage');
+const ieClose = document.getElementById('ieClose');
+const ieApply = document.getElementById('ieApply');
+const ieDelete = document.getElementById('ieDelete');
+
+/* 存檔 DOM */
+const exportBtn = document.getElementById('exportJSON');
+const importBtn = document.getElementById('importJSONBtn');
+const importFile = document.getElementById('importJSON');
+
+/* 目前選取中的訊息 ID */
+let currentEditId = null;
+
+/* ===== 初始化 ===== */
+msgDate.value = new Date().toISOString().slice(0,10);
+phoneTimeDisplay.textContent = phoneTimeInput.value;
+for(let i=0;i<=300;i++){ const o1=document.createElement('option'); o1.value=i; o1.textContent=`${i} 分`; callMinutes.appendChild(o1);}
+for(let i=0;i<=59;i++){ const o2=document.createElement('option'); o2.value=i; o2.textContent=`${i} 秒`; callSeconds.appendChild(o2);}
+callMinutes.value=5; callSeconds.value=11;
+applyUnreadBadge();
+
+/* ===== 工具 ===== */
+const uid=(p='id')=> p+'_'+Math.random().toString(36).slice(2,9);
+const fileToDataURL=f=>new Promise((res,rej)=>{const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f);});
+const esc=s=> (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+const fmtDur=s=>{const m=Math.floor((s||0)/60), n=(s||0)%60; return `${m}:${n<10?'0'+n:n}`;}
+const parseHM=t=>{ if(!t) return null; const [hh,mm]=t.split(':').map(x=>parseInt(x,10)); return hh*60+mm; };
+
+/* ===== 參與者 ===== */
+function firstGrapheme(str){
+  const s = (str || '').trim();
+  if (!s) return '';
+  if (typeof Intl !== 'undefined' && Intl.Segmenter){
+    const seg = new Intl.Segmenter('zh-Hant', {granularity:'grapheme'});
+    const it = seg.segment(s)[Symbol.iterator]().next();
+    return it.value?.segment || s[0];
+  }
+  return s[0];
+}
+
+function participantAvatarPlaceholder(name, overrideInitial){
+  const ch = (overrideInitial || firstGrapheme(name) || '•');
+
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72">
+       <rect width="100%" height="100%" rx="36" ry="36" fill="#e5e7eb"/>
+       <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle"
+             font-family="-apple-system,BlinkMacSystemFont,'SF Pro Text','Noto Sans TC',sans-serif"
+             font-size="32" fill="#111" font-weight="700">${ch}</text>
+     </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+function createParticipantElement(p){
+  const wrap=document.createElement('div'); wrap.className='participant'; wrap.dataset.pid=p.id;
+  wrap.innerHTML = `
+    <div class="p-avatar" title="點擊更換頭貼"><img src="${p.avatar}" alt="${p.name}"></div>
+    <div class="p-name" contenteditable="true" spellcheck="false" title="點擊可改名">${p.name}</div>
+    <div class="p-del" title="刪除">✕</div>
+    <input class="p-file" type="file" accept="image/*" />`;
+
+  const fileInput = wrap.querySelector('.p-file');
+  const avatar = wrap.querySelector('.p-avatar');
+  const delBtn = wrap.querySelector('.p-del');
+  const nameEl = wrap.querySelector('.p-name');
+
+  avatar.addEventListener('click',()=> fileInput.click());
+  fileInput.addEventListener('change', async (e)=>{
+    const f = e.target.files[0]; if(!f) return; const data = await fileToDataURL(f); p.avatar = data; refreshParticipants(); renderAll();
+  });
+  delBtn.addEventListener('click',(ev)=>{ ev.stopPropagation(); deleteParticipant(p.id); });
+
+  // 改名同步
+  nameEl.addEventListener('input', ()=>{
+    p.name = nameEl.textContent.trim() || '朋友';
+    const opt=fromSelect.querySelector(`option[value="${p.id}"]`); if(opt) opt.textContent=p.name;
+    refreshParticipants();
+    renderAll();
+  });
+
+  // 點擊卡片 -> 設定訊息發送者
+  wrap.addEventListener('click', (ev)=>{
+    if(ev.target.closest('.p-file')||ev.target.closest('.p-del')||ev.target.closest('.p-name')) return;
+    const opt=fromSelect.querySelector(`option[value="${p.id}"]`); if(opt) opt.selected=true;
+  });
+  return wrap;
+}
+
+function refreshParticipants(){
+  participantsDiv.innerHTML='';
+  fromSelect.innerHTML = `<option value="me">我（右側）</option>`;
+  participants.forEach(p=>{
+    participantsDiv.appendChild(createParticipantElement(p));
+    const opt=document.createElement('option'); opt.value=p.id; opt.textContent=p.name; fromSelect.appendChild(opt);
+  });
+}
+
+function deleteParticipant(pid){
+  const idx = participants.findIndex(x=>x.id===pid); if(idx<0) return;
+  participants.splice(idx,1);
+  if(fromSelect.value===pid) fromSelect.value='me';
+  refreshParticipants();
+  renderAll();
+}
+
+addPersonBtn.addEventListener('click', async ()=>{
+  const name=(newNameInput.value||'朋友').trim();
+  const file=newAvatarInput.files[0];
+  let avatar = participantAvatarPlaceholder(name);
+  if(file){ avatar = await fileToDataURL(file); }
+  const id=uid('p'); participants.push({id,name,avatar});
+  newNameInput.value=''; newAvatarInput.value='';
+  refreshParticipants();
+});
+
+/* ===== 新增訊息 ===== */
+addMsgBtn.addEventListener('click', async ()=>{
+  const from=fromSelect.value; const type=msgTypeSelect.value; const time=msgTime.value; const date=msgDate.value;
+  let text=msgText.value.trim(); let imageData=null; let secs=0;
+  const readShown = !!readToggle.checked; const readCount = Math.max(0, Math.min(99, parseInt(readCountDefault.value)||0));
+
+  if(type==='image'){
+    const f=msgImage.files[0]; if(!f){ alert('請上傳圖片'); return;}
+    imageData=await fileToDataURL(f);
+  }
+  if(type==='text' && !text){ alert('請輸入文字'); return; }
+  if(type==='call'){ secs=parseInt(callMinutes.value||0)*60 + parseInt(callSeconds.value||0); }
+
+  messages.push({id:uid('m'), fromId:from, type, text, imageData, seconds:secs, time, date, readShown, readCount});
+  msgText.value=''; msgImage.value=''; renderAll();
+});
+
+/* ===== 標題列雙向同步 ===== */
+headerTitle.addEventListener('input',()=>{ chatTitleInput.value = headerTitle.textContent; });
+chatTitleInput.addEventListener('input',()=>{ headerTitle.textContent = chatTitleInput.value; });
+
+/* ===== 右側內嵌編輯器 ===== */
+function openInlineEditor(m){
+  currentEditId = m.id;
+  ieType.value = m.type;
+  ieTime.value = m.time || '12:00';
+  ieReadShown.checked = !!m.readShown;
+  ieReadCount.value = m.readCount ?? 0;
+  ieText.value = m.text || '';
+  ieSeconds.value = m.seconds || 0;
+
+  ieTextRow.style.display = (m.type === 'text') ? 'block' : 'none';
+  ieCallRow.style.display = (m.type === 'call') ? 'block' : 'none';
+  ieImageRow.style.display = (m.type === 'image') ? 'block' : 'none';
+
+  iePanel.classList.remove('hide');
+}
+ieClose.addEventListener('click', ()=> iePanel.classList.add('hide'));
+
+ieApply.addEventListener('click', ()=>{
+  if(!currentEditId) return;
+  const m = messages.find(x=>x.id===currentEditId);
+  if(!m) return;
+
+  m.time = ieTime.value || m.time;
+  m.readShown = !!ieReadShown.checked;
+  m.readCount = Math.max(0, Math.min(99, parseInt(ieReadCount.value)||0));
+
+  if(m.type==='text'){
+    const t = (ieText.value||'').trim();
+    if(!t){ alert('文字內容不可空白'); return; }
+    m.text = t;
+    renderAll();
+    return;
+  }
+  if(m.type==='call'){
+    m.seconds = Math.max(0, parseInt(ieSeconds.value)||0);
+    renderAll();
+    return;
+  }
+  if(m.type==='image'){
+    const f = ieImage.files && ieImage.files[0];
+    if(f){
+      fileToDataURL(f).then(data=>{
+        m.imageData = data;
+        ieImage.value = '';
+        renderAll();
+      });
+      return;
+    }
+    renderAll();
+    return;
+  }
+});
+
+ieDelete.addEventListener('click', ()=>{
+  if(!currentEditId) return;
+  const idx = messages.findIndex(x=>x.id===currentEditId);
+  if(idx >= 0){
+    messages.splice(idx,1);
+    currentEditId = null;
+    iePanel.classList.add('hide');
+    renderAll();
+  }
+});
+
+/* ===== 拖曳排序 ===== */
+let dragId=null;
+function attachDragHandlers(rowEl, m){
+  rowEl.setAttribute('draggable','true');
+  rowEl.addEventListener('dragstart', ()=>{
+    dragId = m.id;
+    rowEl.classList.add('dragging');
+  });
+  rowEl.addEventListener('dragend', ()=>{
+    dragId = null;
+    rowEl.classList.remove('dragging');
+  });
+  rowEl.addEventListener('dragover', (e)=>{ e.preventDefault(); });
+  rowEl.addEventListener('drop', (e)=>{
+    e.preventDefault();
+    const fromIdx = messages.findIndex(x=>x.id===dragId);
+    const toIdx = messages.findIndex(x=>x.id===m.id);
+    if(fromIdx<0 || toIdx<0 || fromIdx===toIdx) return;
+    const [item] = messages.splice(fromIdx,1);
+    const rect = rowEl.getBoundingClientRect();
+    const before = (e.clientY < rect.top + rect.height/2);
+    messages.splice(before ? toIdx : toIdx+1, 0, item);
+    renderAll();
+  });
+}
+
+/* ===== 群組與尾巴判斷 ===== */
+function isGroupHead(prev, cur){
+  if(!prev) return true;                       // 第一則
+  if(prev.fromId !== cur.fromId) return true;  // 換發話者
+  if(prev.date !== cur.date) return true;      // 換日
+  const a=parseHM(prev.time), b=parseHM(cur.time);
+  if(a==null || b==null) return true;
+  return (b - a) >= 1;                         // 分鐘差 >= 1 視為新群組
+}
+
+/* ===== 渲染 ===== */
+function renderAll(){
+  renderedMessages.innerHTML='';
+  let lastDate='';
+  let lastMsg=null;
+
+  messages.forEach(m=>{
+    if(m.date && m.date!==lastDate){
+      const sep=document.createElement('div'); sep.className='date-sep'; sep.textContent=labelDate(m.date); renderedMessages.appendChild(sep); lastDate=m.date;
+      lastMsg=null; // 分隔後視為新群組
+    }
+
+    const row=document.createElement('div'); row.className='msg-row ' + (m.fromId==='me'?'msg-right':'msg-left');
+    row.dataset.mid = m.id;
+
+    if(m.fromId!=='me'){
+      const av=document.createElement('div'); av.className='avatar-small';
+      const p = participants.find(x=>x.id===m.fromId);
+      const src = p?.avatar || participantAvatarPlaceholder('友');
+      av.innerHTML = `<img src="${src}" alt="${p?.name||'朋友'}">`;
+      row.appendChild(av);
+    }
+
+    let bubble=null;
+    if(m.type==='image'){
+      bubble=document.createElement('div'); bubble.className='img-only';
+      bubble.innerHTML=`<img src="${m.imageData}" alt="image message">`;
+    }else{
+      bubble=document.createElement('div'); bubble.className='bubble ' + (m.fromId==='me'?'me':'other');
+      if(m.type==='text'){
+        bubble.innerHTML=`${esc(m.text)}`;
+        // 尾巴：僅文字型，且是群組第一則
+        if(isGroupHead(lastMsg, m)){ bubble.classList.add('tail'); }
+      }
+      if(m.type==='call'){
+        bubble.innerHTML = `
+          <div class="call-box">
+            <div class="call-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 4l4 3-2 3a12 12 0 0 0 6 6l3-2 3 4-2 3c-8 0-14-6-14-14Z"></path>
+              </svg>
+            </div>
+            <div class="call-text">
+              <div class="call-title">語音通話</div>
+              <div class="call-dur">${fmtDur(m.seconds)}</div>
+            </div>
+          </div>`;
+      }
+    }
+
+    const meta=document.createElement('div'); meta.className='meta';
+    if(m.fromId==='me'){
+      const readText = m.readShown ? (m.readCount>0 ? `已讀${m.readCount}` : '已讀') : '';
+      meta.innerHTML = `${readText ? `<div class="read">${readText}</div>` : ''}<div class="t">${m.time}</div>`;
+      row.appendChild(meta);
+      row.appendChild(bubble);
+    } else {
+      meta.innerHTML = `<div class="t">${m.time}</div>`;
+      row.appendChild(bubble);
+      row.appendChild(meta);
+    }
+
+    const handle = document.createElement('div'); handle.className='drag-handle'; handle.textContent='🔧';
+    row.appendChild(handle);
+    row.addEventListener('click', (ev)=>{ if(ev.target.classList.contains('drag-handle')) return; openInlineEditor(m); });
+    attachDragHandlers(row, m);
+
+    renderedMessages.appendChild(row);
+
+    // 記錄上一則（供群組判斷）
+    lastMsg = m;
+  });
+}
+
+function labelDate(iso){
+  const d=new Date(iso+'T00:00:00');
+  const t=new Date(); t.setHours(0,0,0,0);
+  const diff=(d-t)/86400000; if(diff===0) return '今天'; if(diff===-1) return '昨天'; return iso.replaceAll('-','/');
+}
+
+/* 狀態列互動 */
+phoneTimeInput.addEventListener('input', ()=> phoneTimeDisplay.textContent = phoneTimeInput.value );
+batteryRange.addEventListener('input', ()=>{
+  const v=parseInt(batteryRange.value);
+  batteryFill.style.width=v+'%';
+  batteryPct.textContent=v+'%';
+  document.getElementById('batteryVal').textContent=v+'%';
+  batteryFill.style.background = v<=20?'#ff3b30': (v<=50?'#ff9500':'#34c759');
+});
+
+/* 類型切換 */
+msgTypeSelect.addEventListener('change',()=>{
+  const t=msgTypeSelect.value;
+  imageRow.style.display = (t==='image')?'block':'none';
+  callRow.style.display = (t==='call')?'block':'none';
+});
+
+/* 下載 PNG（隱藏板手 + 滿版無白邊 + 去外框） */
+downloadPNG.addEventListener('click', async ()=>{
+  const phoneEl=document.getElementById('phone');
+  const prev=phoneEl.scrollTop; phoneEl.scrollTop=0;
+
+  document.body.classList.add('exporting');
+  await new Promise(r=>requestAnimationFrame(r));
+
+  try{
+    let canvas = await html2canvas(phoneEl,{
+      useCORS:true, allowTaint:true, scale:2,
+      backgroundColor:null, scrollX:0, scrollY:0
+    });
+
+    /* 去 1px 邊緣：避免白邊 */
+    const trimmed = document.createElement('canvas');
+    trimmed.width  = Math.max(1, canvas.width  - 2);
+    trimmed.height = Math.max(1, canvas.height - 2);
+    const ctx = trimmed.getContext('2d');
+    ctx.drawImage(canvas, 1, 1, trimmed.width, trimmed.height, 0, 0, trimmed.width, trimmed.height);
+
+    trimmed.toBlob(b=>{
+      const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='line-chat.png';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    },'image/png');
+  } finally {
+    document.body.classList.remove('exporting');
+    phoneEl.scrollTop=prev;
+  }
+});
+
+/* 匯出 / 匯入 存檔（原樣） */
+exportBtn.addEventListener('click', ()=>{
+  const payload = {
+    version: 1,
+    title: headerTitle.textContent || '',
+    phone: { time: phoneTimeInput.value, battery: parseInt(batteryRange.value)||0 },
+    participants, messages
+  };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'line-chat-save.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+});
+
+importBtn.addEventListener('click', ()=> importFile.click());
+importFile.addEventListener('change', async (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const text = await f.text();
+    const data = JSON.parse(text);
+
+    if(!data || !Array.isArray(data.messages) || !Array.isArray(data.participants)){
+      alert('存檔格式不正確'); return;
+    }
+
+    participants.splice(0, participants.length, ...data.participants);
+    messages.splice(0, messages.length, ...data.messages);
+
+    if(data.title!=null){ headerTitle.textContent = data.title; chatTitleInput.value = data.title; }
+    if(data.phone){
+      if(data.phone.time) { phoneTimeInput.value = data.phone.time; phoneTimeDisplay.textContent = data.phone.time; }
+      if(typeof data.phone.battery === 'number'){
+        batteryRange.value = String(data.phone.battery);
+        batteryPct.textContent = data.phone.battery + '%';
+        document.getElementById('batteryVal').textContent = data.phone.battery + '%';
+        batteryFill.style.width = data.phone.battery + '%';
+        batteryFill.style.background = data.phone.battery<=20?'#ff3b30': (data.phone.battery<=50?'#ff9500':'#34c759');
+      }
+    }
+
+    refreshParticipants();
+    renderAll();
+    importFile.value = '';
+  }catch(err){
+    console.error(err);
+    alert('載入失敗：' + err.message);
+  }
+});
+
+/* Demo 種子資料（原樣） */
+(function seed(){
+  const id=uid('p'); participants.push({id,name:'小美', avatar: participantAvatarPlaceholder('小美')}); refreshParticipants();
+  headerTitle.textContent = chatTitleInput.value;
+  const today = msgDate.value;
+  messages.push({id:uid('m'), fromId:id, type:'text', text:'我謝你喔', time:'12:50', date:today, readShown:true, readCount:0});
+  messages.push({id:uid('m'), fromId:'me', type:'text', text:'寫完了？', time:'13:06', date:today, readShown:true, readCount:0});
+  messages.push({id:uid('m'), fromId:'me', type:'image', imageData:'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='480' height='320'><rect width='100%' height='100%' fill='#eee'/><text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' font-size='20' fill='#999'>圖片</text></svg>`), time:'13:08', date:today, readShown:true, readCount:0});
+  messages.push({id:uid('m'), fromId:id, type:'call', seconds:311, time:'14:05', date:today, readShown:true, readCount:2});
+  renderAll();
+})();
+
+/* === 新增：背景功能（不影響匯出/匯入結構） === */
+let bgImageDataURL = null;
+
+function applyChatBackground() {
+  if (bgColor) {
+    chatArea.style.backgroundColor = bgColor.value || '';
+  }
+  if (bgImageDataURL) {
+    chatArea.style.backgroundImage = `url(${bgImageDataURL})`;
+    if (bgSize && bgSize.value === 'repeat') {
+      chatArea.style.backgroundRepeat = 'repeat';
+      chatArea.style.backgroundSize = 'auto';
+    } else {
+      chatArea.style.backgroundRepeat = 'no-repeat';
+      chatArea.style.backgroundSize = (bgSize?.value || 'cover');
+    }
+    chatArea.style.backgroundPosition = 'center center';
+  } else {
+    chatArea.style.backgroundImage = 'none';
+  }
+
+  if (bgDim) {
+    const dim = Math.max(0, Math.min(80, parseInt(bgDim.value||0, 10)));
+    chatArea.style.setProperty('--bg-dim', (dim/100).toString());
+    if (bgDimVal) bgDimVal.textContent = `${dim}%`;
+  }
+
+  if (bgBlur) {
+    chatArea.style.setProperty('--bg-blur', bgBlur.checked ? '6px' : '0px');
+  }
+}
+
+bgColor && bgColor.addEventListener('input', applyChatBackground);
+bgSize && bgSize.addEventListener('change', applyChatBackground);
+bgDim && bgDim.addEventListener('input', applyChatBackground);
+bgBlur && bgBlur.addEventListener('change', applyChatBackground);
+bgImage && bgImage.addEventListener('change', async (e)=>{
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  bgImageDataURL = await fileToDataURL(f);
+  applyChatBackground();
+});
+bgClear && bgClear.addEventListener('click', ()=>{
+  bgImageDataURL = null;
+  if (bgImage) bgImage.value = '';
+  applyChatBackground();
+});
+
+// 初始化一次
+applyChatBackground();
+</script>
+</body>
+</html>
